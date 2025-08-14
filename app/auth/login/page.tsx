@@ -11,6 +11,7 @@ interface LoginCredentials {
 }
 
 interface LoginResponse {
+    id: number;
     access_token: string;
     refresh_token: string;
     user_id: number;
@@ -64,9 +65,15 @@ export default function LoginPage(){
                 console.error("Login Error", err.response?.data);
             } else {
                 setError("An unexpected error occurred. Please try again")
-                console.error("Login Failed. Please try again", err) }
-            } finally {
-                setLoading(false);
+                console.error("Login Failed. Please try again", err);
+            }
+
+            // Clear error after 5 seconds
+            setTimeout(() => {
+                setError('');
+            }, 5000);
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -82,6 +89,13 @@ export default function LoginPage(){
             <div className="absolute bottom-32 right-16 w-32 h-32 bg-blue-400/10 rounded-full blur-2xl"></div>
             <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-white/5 rounded-full blur-lg"></div>
 
+            {/* Error Message - Top Right Corner */}
+            {error && (
+                <div className="absolute top-4 right-4 z-20 bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-lg p-3 text-sm text-red-200 max-w-xs">
+                    {error}
+                </div>
+            )}
+
             {/* Login Card */}
             <div className="w-full max-w-md relative z-10">
                 {/* Header */}
@@ -96,13 +110,6 @@ export default function LoginPage(){
                 {/* Login Form */}
                 <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl p-6">
                     <div className="space-y-6">
-                        {/* Error Message */}
-                        {error && (
-                            <div className="bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-lg p-3 text-sm text-red-200">
-                                {error}
-                            </div>
-                        )}
-
                         {/* Email Field */}
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium mb-2">
@@ -214,7 +221,7 @@ export default function LoginPage(){
                     <p className="text-gray-300 text-sm">
                         Don't have an account?{' '}
                         <a
-                            href="/register"
+                            href="/auth/register"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-300 hover:text-blue-200 font-medium transition-colors duration-200"
