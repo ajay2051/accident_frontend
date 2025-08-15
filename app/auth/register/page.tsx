@@ -42,14 +42,45 @@ export default function RegisterPage() {
         phone_number: 0,
         address: "",
     })
+
     const [loading, setLoading] = useState<boolean>(false)
     const [error, setError] = useState<string | null>(null)
     const [showPassword, setShowPassword] = useState<boolean>(false);
     const [success, setSuccess] = useState<string | null>(null);
+    const [emailError, setEmailError] = useState<string>("");
+    const [passwordError, setPasswordError] = useState<string>("");
+
+    const validatePassword = (password: string): string => {
+        if (!password) return "Password is required";
+        if (password.length < 8) return "Password must be at least 8 characters long";
+        if (!/(?=.*[a-z])/.test(password)) return "Password must contain at least one lowercase letter";
+        if (!/(?=.*[A-Z])/.test(password)) return "Password must contain at least one uppercase letter";
+        if (!/(?=.*\d)/.test(password)) return "Password must contain at least one number";
+        if (!/(?=.*[@$!%*?&])/.test(password)) return "Password must contain at least one special character (@$!%*?&)";
+        return "";
+    };
+
+    const validateEmail = (email: string): string => {
+        if (!email) return "Email is required";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Please enter a valid email address";
+        return "";
+    };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const {name, value} = e.target;
         setCredentials({...credentials, [name]: value});
+        if (error) setError(null);
+
+        if (name === 'email') {
+            const emailValidationError = validateEmail(value)
+            setEmailError(emailValidationError)
+        }
+        if (error) setError(null);
+
+        if (name === 'password') {
+            const passwordValidationError = validatePassword(value)
+            setPasswordError(passwordValidationError)
+        }
         if (error) setError(null);
     }
 
@@ -198,6 +229,9 @@ export default function RegisterPage() {
                                     disabled={loading}
                                 />
                             </div>
+                            {emailError && (
+                                <p className="text-red-300 text-xs mt-1">{emailError}</p>
+                            )}
                         </div>
 
                         {/* Phone and Role */}
@@ -297,6 +331,9 @@ export default function RegisterPage() {
                                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
                             </div>
+                            {passwordError && (
+                                <p className="text-red-300 text-xs mt-1">{passwordError}</p>
+                            )}
                         </div>
 
                         {/* Terms & Conditions */}
