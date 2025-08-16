@@ -4,6 +4,7 @@ import {useRouter} from "next/navigation";
 import React, {useState} from "react";
 import axios from "axios";
 import { Eye, EyeOff, Lock, Mail, User, Phone, MapPin, UserCheck, Loader2 } from 'lucide-react';
+import {string} from "postcss-selector-parser";
 
 
 interface RegisterCredentials {
@@ -49,6 +50,22 @@ export default function RegisterPage() {
     const [success, setSuccess] = useState<string | null>(null);
     const [emailError, setEmailError] = useState<string>("");
     const [passwordError, setPasswordError] = useState<string>("");
+    const [firstNameError, setFirstNameError] = useState<string>("");
+    const [lastNameError, setLastNameError] = useState<string>("");
+
+    const validateFirstName = (first_name: string): string => {
+        if (first_name.length > 10) return "First Name cannot be more than 10 characters";
+        if (/(?=.*\d)/.test(first_name)) return "First Name cannot contain number";
+        if (/(?=.*[@$!%*?&])/.test(first_name)) return "First Name cannot contain special characters";
+        return "";
+    }
+
+    const validateLastName = (last_name: string): string => {
+        if (last_name.length > 10) return "Last Name cannot be more than 10 characters";
+        if (/(?=.*\d)/.test(last_name)) return "Last Name cannot contain number";
+        if (/(?=.*[@$!%*?&])/.test(last_name)) return "Last Name cannot contain special characters";
+        return "";
+    }
 
     const validatePassword = (password: string): string => {
         if (!password) return "Password is required";
@@ -69,6 +86,18 @@ export default function RegisterPage() {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const {name, value} = e.target;
         setCredentials({...credentials, [name]: value});
+        if (error) setError(null);
+
+        if (name === 'first_name') {
+            const firstNameValidationError = validateFirstName(value)
+            setFirstNameError(firstNameValidationError)
+        }
+        if (error) setError(null);
+
+        if (name === 'last_name') {
+            const lastNameValidationError = validateLastName(value)
+            setLastNameError(lastNameValidationError)
+        }
         if (error) setError(null);
 
         if (name === 'email') {
@@ -186,6 +215,9 @@ export default function RegisterPage() {
                                         disabled={loading}
                                     />
                                 </div>
+                                {firstNameError && (
+                                    <p className="text-red-300 text-xs mt-1">{firstNameError}</p>
+                                )}
                             </div>
 
                             {/* Last Name */}
@@ -207,6 +239,9 @@ export default function RegisterPage() {
                                         disabled={loading}
                                     />
                                 </div>
+                                {lastNameError && (
+                                    <p className="text-red-300 text-xs mt-1">{lastNameError}</p>
+                                )}
                             </div>
                         </div>
 
