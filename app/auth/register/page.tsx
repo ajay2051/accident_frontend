@@ -52,6 +52,7 @@ export default function RegisterPage() {
     const [passwordError, setPasswordError] = useState<string>("");
     const [firstNameError, setFirstNameError] = useState<string>("");
     const [lastNameError, setLastNameError] = useState<string>("");
+    const [addressError, setAddressError] = useState<string>("");
 
     const validateFirstName = (first_name: string): string => {
         if (first_name.length > 10) return "First Name cannot be more than 10 characters";
@@ -83,6 +84,13 @@ export default function RegisterPage() {
         return "";
     };
 
+    const validateAddress = (address: string): string => {
+        if (address.length > 20) return "Address cannot be more than 20 characters";
+        if (/(?=.*\d)/.test(address)) return "Address cannot contain number";
+        if (/(?=.*[@$!%*?&])/.test(address)) return "Address cannot contain special characters";
+        return ""
+    }
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const {name, value} = e.target;
         setCredentials({...credentials, [name]: value});
@@ -103,6 +111,12 @@ export default function RegisterPage() {
         if (name === 'email') {
             const emailValidationError = validateEmail(value)
             setEmailError(emailValidationError)
+        }
+        if (error) setError(null);
+
+        if (name === 'address') {
+            const addressValidationError = validateAddress(value)
+            setAddressError(addressValidationError)
         }
         if (error) setError(null);
 
@@ -337,6 +351,9 @@ export default function RegisterPage() {
                                     disabled={loading}
                                 />
                             </div>
+                            {addressError && (
+                                <p className="text-red-300 text-xs mt-1">{addressError}</p>
+                            )}
                         </div>
 
                         {/* Password Field */}
