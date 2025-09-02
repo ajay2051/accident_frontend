@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import axios from "axios"
 import { Eye, EyeOff, Lock, Mail, Loader2 } from 'lucide-react';
 import {useRouter} from "next/navigation";
+import {useMutation} from "@tanstack/react-query";
 
 interface LoginCredentials {
     email: string;
@@ -19,17 +20,60 @@ interface LoginResponse {
     user_role: string;
 }
 
+const loginUser = async (credentials: LoginCredentials): Promise<LoginResponse> => {
+    try {
+        const response = await axios.post<LoginResponse>(
+            `${process.env.NEXT_PUBLIC_API_URL}/auth/token/`,
+            credentials,
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }
+        );
+
+        return response.data;
+    } catch (error: any) {
+        if (error.response) {
+            throw new Error(
+                error.response.data?.message || "Login Failed. Please check credentials"
+            );
+        } else if (error.request) {
+            throw new Error("No response from server. Please try again.");
+        } else {
+            throw new Error("Network error occurred. Please try again.");
+        }
+    }
+};
+
 export default function LoginPage(){
     const router = useRouter();
     const [credentials, setCredentials] = useState<LoginCredentials>({
         email: "",
         password: "",
     });
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<string | null>(null)
+    // const [loading, setLoading] = useState<boolean>(false);
+    // const [error, setError] = useState<string | null>(null)
     const [showPassword, setShowPassword] = useState<boolean>(false);
     const [emailError, setEmailError] = useState<string>("");
     const [passwordError, setPasswordError] = useState<string>("");
+
+    const loginMutation = useMutation({
+        mutationFn: loginUser,
+        onSuccess: (data: LoginResponse) => {
+            localStorage.setItem("token", data.access_token);
+            localStorage.setItem("refresh_token", data.refresh_token);
+            localStorage.setItem("user_info", JSON.stringify({
+                user_id: data.user_id,
+                email: data.email,
+                user_role: data.user_role
+            }));
+            router.push("/main/landing");
+        },
+        onError: (error: Error) => {
+            console.error("Login Error", error.message || error);
+        },
+    })
 
     const validateEmail = (email: string): string => {
         if (!email) return "Email is required";
@@ -50,62 +94,39 @@ export default function LoginPage(){
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const {name, value} = e.target;
         setCredentials({...credentials, [name]: value});
-        if (error) setError(null);
 
         if (name === 'email') {
             const emailValidationError = validateEmail(value)
             setEmailError(emailValidationError)
         }
-        if (error) setError(null);
 
         if (name === 'password') {
             const passwordValidationError = validatePassword(value)
             setPasswordError(passwordValidationError)
         }
-        if (error) setError(null);
     }
 
     const handleSubmit = async (e: React.FormEvent): Promise<void> => {
         e.preventDefault();
-        setLoading(true);
-        setError(null);
 
-        try{
-            const response = await axios.post<LoginResponse>(
-                `${process.env.NEXT_PUBLIC_API_URL}/auth/token/`,
-                credentials,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                },
-            )
+        const emailValidationError = validateEmail(credentials.email)
+        const passwordValidationError = validatePassword(credentials.password)
 
-            localStorage.setItem("access_token", response.data.access_token);
-            localStorage.setItem("refresh_token", response.data.refresh_token);
-            localStorage.setItem("user_info", JSON.stringify({
-                user_id: response.data.user_id,
-                email: response.data.email,
-                user_role: response.data.user_role
-            }))
-            router.push("/main/landing");
-        } catch (err) {
-            if (axios.isAxiosError(err)) {
-                setError(err.response?.data?.message || "Login Failed. Please Check Credentials");
-                console.error("Login Error", err.response?.data);
-            } else {
-                setError("An unexpected error occurred. Please try again")
-                console.error("Login Failed. Please try again", err);
-            }
+        setEmailError(emailValidationError)
+        setPasswordError(emailValidationError)
 
-            // Clear error after 5 seconds
-            setTimeout(() => {
-                setError('');
-            }, 5000);
-        } finally {
-            setLoading(false);
+        if (!emailValidationError && !passwordValidationError) {
+            loginMutation.mutate(credentials)
         }
     }
+
+    // Get error message from mutation
+    const getErrorMessage = () => {
+        if (axios.isAxiosError(loginMutation.error)) {
+            return loginMutation.error.response?.data?.message || "Login Failed. Please Check Credentials";
+        }
+        return "An unexpected error occurred. Please try again";
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 text-white relative overflow-hidden font-['Poppins',sans-serif] flex items-center justify-center p-4">
@@ -120,9 +141,9 @@ export default function LoginPage(){
             <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-white/5 rounded-full blur-lg"></div>
 
             {/* Error Message - Top Right Corner */}
-            {error && (
+            {loginMutation.isError && (
                 <div className="absolute top-4 right-4 z-20 bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-lg p-3 text-sm text-red-200 max-w-xs">
-                    {error}
+                    {getErrorMessage()}
                 </div>
             )}
 
@@ -156,7 +177,7 @@ export default function LoginPage(){
                                     placeholder="Enter your email"
                                     className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200"
                                     required
-                                    disabled={loading}
+                                    disabled={loginMutation.isPending}
                                 />
                             </div>
                             {emailError && (
@@ -180,13 +201,13 @@ export default function LoginPage(){
                                     placeholder="Enter your password"
                                     className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg pl-10 pr-12 py-3 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200"
                                     required
-                                    disabled={loading}
+                                    disabled={loginMutation.isPending}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
                                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-300 hover:text-white transition-colors duration-200"
-                                    disabled={loading}
+                                    disabled={loginMutation.isPending}
                                 >
                                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
@@ -202,14 +223,14 @@ export default function LoginPage(){
                                 <input
                                     type="checkbox"
                                     className="w-4 h-4 text-blue-500 bg-white/10 border border-white/20 rounded focus:ring-blue-400/50 focus:ring-2"
-                                    disabled={loading}
+                                    disabled={loginMutation.isPending}
                                 />
                                 <span className="ml-2 text-gray-200">Remember me</span>
                             </label>
                             <button
                                 type="button"
                                 className="text-blue-300 hover:text-blue-200 transition-colors duration-200"
-                                disabled={loading}
+                                disabled={loginMutation.isPending}
                             >
                                 Forgot password?
                             </button>
@@ -218,10 +239,10 @@ export default function LoginPage(){
                         {/* Submit Button */}
                         <button
                             onClick={handleSubmit}
-                            disabled={loading || !credentials.email || !credentials.password}
+                            disabled={loginMutation.isPending || !credentials.email || !credentials.password}
                             className="w-full bg-blue-500/70 backdrop-blur-sm hover:bg-blue-500/80 disabled:bg-gray-500/50 disabled:cursor-not-allowed border border-white/20 rounded-lg py-3 font-medium transition-all duration-200 flex items-center justify-center gap-2"
                         >
-                            {loading ? (
+                            {loginMutation.isPending ? (
                                 <>
                                     <Loader2 className="w-5 h-5 animate-spin" />
                                     Signing In...

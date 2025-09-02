@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.85.8",
+    "@tanstack/react-query-devtools": "^5.85.8",
     "autoprefixer": "^10.4.21",
     "axios": "^1.11.0",
     "lucide-react": "^0.539.0",
