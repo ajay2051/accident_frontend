@@ -4,7 +4,7 @@ import {useRouter} from "next/navigation";
 import React, {useState} from "react";
 import axios from "axios";
 import { Eye, EyeOff, Lock, Mail, User, Phone, MapPin, UserCheck, Loader2 } from 'lucide-react';
-import {string} from "postcss-selector-parser";
+import {useMutation} from "@tanstack/react-query";
 
 
 interface RegisterCredentials {
@@ -32,6 +32,29 @@ interface RegisterResponse {
     updated_at: string
 }
 
+const registerUser = async (credentials: RegisterCredentials): Promise<RegisterResponse> => {
+    try {
+        const response = await axios.post<RegisterResponse>(
+            `${process.env.NEXT_PUBLIC_API_URL}/auth/create_users/`,
+            credentials,
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }
+        );
+        return response.data;
+    } catch (error: any) {
+        if (error.response) {
+            throw new Error(error.response.data?.message || "Registration failed.");
+        } else if (error.request) {
+            throw new Error("No response from server. Please try again.");
+        } else {
+            throw new Error("Network error occurred. Please try again.");
+        }
+    }
+};
+
 export default function RegisterPage() {
     const router = useRouter();
     const[credentials, setCredentials] = useState<RegisterCredentials>({
@@ -44,8 +67,8 @@ export default function RegisterPage() {
         address: "",
     })
 
-    const [loading, setLoading] = useState<boolean>(false)
-    const [error, setError] = useState<string | null>(null)
+    // const [loading, setLoading] = useState<boolean>(false)
+    // const [error, setError] = useState<string | null>(null)
     const [showPassword, setShowPassword] = useState<boolean>(false);
     const [success, setSuccess] = useState<string | null>(null);
     const [emailError, setEmailError] = useState<string>("");
@@ -53,6 +76,19 @@ export default function RegisterPage() {
     const [firstNameError, setFirstNameError] = useState<string>("");
     const [lastNameError, setLastNameError] = useState<string>("");
     const [addressError, setAddressError] = useState<string>("");
+
+    const registerMutation = useMutation({
+        mutationFn: registerUser,
+        onSuccess: (data: RegisterResponse) => {
+            router.push("/main/login");
+        },
+        onError: (error: Error) => {
+            console.error("Registration Error", error.message || error);
+            setTimeout(() => {
+                registerMutation.reset();
+            }, 5000);
+        },
+    })
 
     const validateFirstName = (first_name: string): string => {
         if (first_name.length > 10) return "First Name cannot be more than 10 characters";
@@ -94,80 +130,66 @@ export default function RegisterPage() {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const {name, value} = e.target;
         setCredentials({...credentials, [name]: value});
-        if (error) setError(null);
 
         if (name === 'first_name') {
             const firstNameValidationError = validateFirstName(value)
             setFirstNameError(firstNameValidationError)
         }
-        if (error) setError(null);
 
         if (name === 'last_name') {
             const lastNameValidationError = validateLastName(value)
             setLastNameError(lastNameValidationError)
         }
-        if (error) setError(null);
 
         if (name === 'email') {
             const emailValidationError = validateEmail(value)
             setEmailError(emailValidationError)
         }
-        if (error) setError(null);
 
         if (name === 'address') {
             const addressValidationError = validateAddress(value)
             setAddressError(addressValidationError)
         }
-        if (error) setError(null);
 
         if (name === 'password') {
             const passwordValidationError = validatePassword(value)
             setPasswordError(passwordValidationError)
         }
-        if (error) setError(null);
     }
 
     const handleSubmit = async (e: React.FormEvent): Promise<void> => {
         e.preventDefault();
-        setLoading(true);
-        setError(null);
+        const firstNameValidationError = validateFirstName(credentials.first_name)
+        const lastNameValidationError = validateLastName(credentials.last_name)
+        const emailValidationError = validateEmail(credentials.email)
+        const passwordValidationError = validatePassword(credentials.password)
+        const addressValidationError = validateAddress(credentials.address)
 
-        try{
-            const response = await axios.post<RegisterResponse>(
-                `${process.env.NEXT_PUBLIC_API_URL}/auth/create_users/`,
-                credentials,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                },
-            )
+        setFirstNameError(firstNameValidationError)
+        setLastNameError(lastNameValidationError)
+        setEmailError(emailValidationError)
+        setPasswordError(passwordValidationError)
+        setAddressError(addressValidationError)
 
-            setSuccess("Registration successful! Redirecting to login...");
-
-            setTimeout(() => {
-                router.push("/login");
-            }, 2000);
-
-        } catch (err) {
-            if (axios.isAxiosError(err)) {
-                setError(err.response?.data?.message || "Registration Failed...");
-                console.error("Registration Error", err.response?.data);
-            } else {
-                setError("An unexpected error occurred. Please try again")
-                console.error("Registration Failed. Please try again", err);
-            }
-
-            // Clear error after 5 seconds
-            setTimeout(() => {
-                setError('');
-            }, 5000);
-        } finally {
-            setLoading(false);
+        if (!firstNameValidationError && !lastNameValidationError && !emailValidationError && !passwordValidationError && !addressValidationError) {
+            registerMutation.mutate(credentials)
         }
     }
 
-    // @ts-ignore
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSubmit(e as any);
+        }
+    };
+
+    const getErrorMessage = () => {
+        if (registerMutation.error instanceof Error) {
+            return registerMutation.error.message || "Registration Failed. Please Check Credentials";
+        }
+        return "An unexpected error occurred. Please try again";
+    };
+        // @ts-ignore
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 text-white relative overflow-hidden font-['Poppins',sans-serif] flex items-center justify-center p-4">
             {/* Background Effects */}
@@ -185,7 +207,7 @@ export default function RegisterPage() {
                 {/* Header */}
                 <div className="text-center mb-8">
                     <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl mx-auto mb-6 flex items-center justify-center">
-                        <UserCheck className="w-10 h-10 text-blue-300" />
+                        <UserCheck className="w-10 h-10 text-blue-300"/>
                     </div>
                     <h1 className="text-3xl font-bold mb-2">Create Account</h1>
                     <p className="text-gray-200 text-sm">Join our Accident Notification platform today</p>
@@ -193,7 +215,7 @@ export default function RegisterPage() {
 
                 {/* Register Form */}
                 <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl p-6">
-                    <div className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Success Message */}
                         {success && (
                             <div className="bg-green-500/20 backdrop-blur-sm border border-green-400/30 rounded-lg p-3 text-sm text-green-200">
@@ -202,9 +224,9 @@ export default function RegisterPage() {
                         )}
 
                         {/* Error Message */}
-                        {error && (
+                        {registerMutation.isError && (
                             <div className="bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-lg p-3 text-sm text-red-200">
-                                {error}
+                                {getErrorMessage()}
                             </div>
                         )}
 
@@ -216,17 +238,18 @@ export default function RegisterPage() {
                                     First Name
                                 </label>
                                 <div className="relative">
-                                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300" />
+                                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300"/>
                                     <input
                                         type="text"
                                         id="first_name"
                                         name="first_name"
                                         value={credentials.first_name}
                                         onChange={handleInputChange}
+                                        onKeyDown={handleKeyDown}
                                         placeholder="Enter first name"
                                         className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200"
                                         required
-                                        disabled={loading}
+                                        disabled={registerMutation.isPending}
                                     />
                                 </div>
                                 {firstNameError && (
@@ -240,17 +263,18 @@ export default function RegisterPage() {
                                     Last Name
                                 </label>
                                 <div className="relative">
-                                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300" />
+                                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300"/>
                                     <input
                                         type="text"
                                         id="last_name"
                                         name="last_name"
                                         value={credentials.last_name}
                                         onChange={handleInputChange}
+                                        onKeyDown={handleKeyDown}
                                         placeholder="Enter last name"
                                         className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200"
                                         required
-                                        disabled={loading}
+                                        disabled={registerMutation.isPending}
                                     />
                                 </div>
                                 {lastNameError && (
@@ -265,17 +289,18 @@ export default function RegisterPage() {
                                 Email Address
                             </label>
                             <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300" />
+                                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300"/>
                                 <input
                                     type="email"
                                     id="email"
                                     name="email"
                                     value={credentials.email}
                                     onChange={handleInputChange}
+                                    onKeyDown={handleKeyDown}
                                     placeholder="Enter your email"
                                     className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200"
                                     required
-                                    disabled={loading}
+                                    disabled={registerMutation.isPending}
                                 />
                             </div>
                             {emailError && (
@@ -291,17 +316,18 @@ export default function RegisterPage() {
                                     Phone Number
                                 </label>
                                 <div className="relative">
-                                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300" />
+                                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300"/>
                                     <input
                                         type="number"
                                         id="phone_number"
                                         name="phone_number"
                                         value={credentials.phone_number || ''}
                                         onChange={handleInputChange}
+                                        onKeyDown={handleKeyDown}
                                         placeholder="Enter phone number"
                                         className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200"
                                         required
-                                        disabled={loading}
+                                        disabled={registerMutation.isPending}
                                     />
                                 </div>
                             </div>
@@ -312,15 +338,16 @@ export default function RegisterPage() {
                                     Role
                                 </label>
                                 <div className="relative">
-                                    <UserCheck className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300" />
+                                    <UserCheck className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300"/>
                                     <select
                                         id="role"
                                         name="role"
                                         value={credentials.role}
                                         onChange={handleInputChange}
+                                        onKeyDown={handleKeyDown}
                                         className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200"
                                         required
-                                        disabled={loading}
+                                        disabled={registerMutation.isPending}
                                     >
                                         <option value="" className="bg-gray-800">Select a role</option>
                                         <option value="admin" className="bg-gray-800">ADMIN</option>
@@ -338,17 +365,18 @@ export default function RegisterPage() {
                                 Address
                             </label>
                             <div className="relative">
-                                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300" />
+                                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300"/>
                                 <input
                                     type="text"
                                     id="address"
                                     name="address"
                                     value={credentials.address}
                                     onChange={handleInputChange}
+                                    onKeyDown={handleKeyDown}
                                     placeholder="Enter your address"
                                     className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200"
                                     required
-                                    disabled={loading}
+                                    disabled={registerMutation.isPending}
                                 />
                             </div>
                             {addressError && (
@@ -362,25 +390,26 @@ export default function RegisterPage() {
                                 Password
                             </label>
                             <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300" />
+                                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-300"/>
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     id="password"
                                     name="password"
                                     value={credentials.password}
                                     onChange={handleInputChange}
+                                    onKeyDown={handleKeyDown}
                                     placeholder="Enter your password"
                                     className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg pl-10 pr-12 py-3 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200"
                                     required
-                                    disabled={loading}
+                                    disabled={registerMutation.isPending}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
                                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-300 hover:text-white transition-colors duration-200"
-                                    disabled={loading}
+                                    disabled={registerMutation.isPending}
                                 >
-                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    {showPassword ? <EyeOff className="w-5 h-5"/> : <Eye className="w-5 h-5"/>}
                                 </button>
                             </div>
                             {passwordError && (
@@ -394,7 +423,7 @@ export default function RegisterPage() {
                                 type="checkbox"
                                 id="terms"
                                 className="w-4 h-4 mt-0.5 text-blue-500 bg-white/10 border border-white/20 rounded focus:ring-blue-400/50 focus:ring-2"
-                                disabled={loading}
+                                disabled={registerMutation.isPending}
                                 required
                             />
                             <label htmlFor="terms" className="text-gray-200">
@@ -411,20 +440,21 @@ export default function RegisterPage() {
 
                         {/* Submit Button */}
                         <button
+                            type="submit"
                             onClick={handleSubmit}
-                            disabled={loading || !credentials.first_name || !credentials.last_name || !credentials.email || !credentials.password || !credentials.role}
+                            disabled={registerMutation.isPending || !credentials.first_name || !credentials.last_name || !credentials.email || !credentials.password || !credentials.role}
                             className="w-full bg-blue-500/70 backdrop-blur-sm hover:bg-blue-500/80 disabled:bg-gray-500/50 disabled:cursor-not-allowed border border-white/20 rounded-lg py-3 font-medium transition-all duration-200 flex items-center justify-center gap-2"
                         >
-                            {loading ? (
+                            {registerMutation.isPending ? (
                                 <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    <Loader2 className="w-5 h-5 animate-spin"/>
                                     Creating Account...
                                 </>
                             ) : (
                                 'Create Account'
                             )}
                         </button>
-                    </div>
+                    </form>
                 </div>
 
                 {/* Footer */}

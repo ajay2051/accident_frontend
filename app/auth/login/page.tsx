@@ -72,6 +72,9 @@ export default function LoginPage(){
         },
         onError: (error: Error) => {
             console.error("Login Error", error.message || error);
+            setTimeout(() => {
+                loginMutation.reset();
+            }, 5000);
         },
     })
 
@@ -113,17 +116,24 @@ export default function LoginPage(){
         const passwordValidationError = validatePassword(credentials.password)
 
         setEmailError(emailValidationError)
-        setPasswordError(emailValidationError)
+        setPasswordError(passwordValidationError)
 
         if (!emailValidationError && !passwordValidationError) {
             loginMutation.mutate(credentials)
         }
     }
 
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSubmit(e as any);
+        }
+    };
+
     // Get error message from mutation
     const getErrorMessage = () => {
-        if (axios.isAxiosError(loginMutation.error)) {
-            return loginMutation.error.response?.data?.message || "Login Failed. Please Check Credentials";
+        if (loginMutation.error instanceof Error) {
+            return loginMutation.error.message;
         }
         return "An unexpected error occurred. Please try again";
     };
@@ -160,7 +170,7 @@ export default function LoginPage(){
 
                 {/* Login Form */}
                 <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl p-6">
-                    <div className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Email Field */}
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium mb-2">
@@ -174,6 +184,7 @@ export default function LoginPage(){
                                     name="email"
                                     value={credentials.email}
                                     onChange={handleInputChange}
+                                    onKeyDown={handleKeyDown}
                                     placeholder="Enter your email"
                                     className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200"
                                     required
@@ -198,6 +209,7 @@ export default function LoginPage(){
                                     name="password"
                                     value={credentials.password}
                                     onChange={handleInputChange}
+                                    onKeyDown={handleKeyDown}
                                     placeholder="Enter your password"
                                     className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg pl-10 pr-12 py-3 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200"
                                     required
@@ -238,6 +250,7 @@ export default function LoginPage(){
 
                         {/* Submit Button */}
                         <button
+                            type="submit"
                             onClick={handleSubmit}
                             disabled={loginMutation.isPending || !credentials.email || !credentials.password}
                             className="w-full bg-blue-500/70 backdrop-blur-sm hover:bg-blue-500/80 disabled:bg-gray-500/50 disabled:cursor-not-allowed border border-white/20 rounded-lg py-3 font-medium transition-all duration-200 flex items-center justify-center gap-2"
@@ -251,7 +264,7 @@ export default function LoginPage(){
                                 'Sign In'
                             )}
                         </button>
-                    </div>
+                    </form>
 
                     {/* Divider */}
                     <div className="flex items-center my-6">
