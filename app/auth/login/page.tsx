@@ -5,6 +5,7 @@ import axios from "axios"
 import { Eye, EyeOff, Lock, Mail, Loader2 } from 'lucide-react';
 import {useRouter} from "next/navigation";
 import {useMutation} from "@tanstack/react-query";
+import GoogleCallback from "@/app/auth/google_callback/page";
 
 interface LoginCredentials {
     email: string;
@@ -19,6 +20,29 @@ interface LoginResponse {
     email: string;
     user_role: string;
 }
+
+interface GoogleSignInResponse {
+    url: string;
+}
+
+const googleSignIn = async (): Promise<GoogleSignInResponse> => {
+    try {
+        const response = await axios.get<GoogleSignInResponse>(
+            `${process.env.NEXT_PUBLIC_API_URL}/google/signin/`,
+        );
+        return response.data;
+    } catch (error: any) {
+        if (error.response) {
+            throw new Error(
+                error.response.data?.message || "Google Sign-In failed. Please try again."
+            );
+        } else if (error.request) {
+            throw new Error("No response from server. Please try again.");
+        } else {
+            throw new Error("Network error occurred. Please try again.");
+        }
+    }
+};
 
 const loginUser = async (credentials: LoginCredentials): Promise<LoginResponse> => {
     try {
@@ -78,6 +102,20 @@ export default function LoginPage(){
         },
     })
 
+    const googleSignInMutation = useMutation({
+        mutationFn: googleSignIn,
+        onSuccess: (data: GoogleSignInResponse) => {
+            // Redirect to Google OAuth URL
+            window.location.href = data.url;
+        },
+        onError: (error: Error) => {
+            console.error("Google Sign-In Error", error.message || error);
+            setTimeout(() => {
+                googleSignInMutation.reset();
+            }, 5000);
+        },
+    });
+
     const validateEmail = (email: string): string => {
         if (!email) return "Email is required";
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Please enter a valid email address";
@@ -123,6 +161,10 @@ export default function LoginPage(){
         }
     }
 
+    const handleGoogleSignIn = () => {
+        googleSignInMutation.mutate();
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -134,6 +176,9 @@ export default function LoginPage(){
     const getErrorMessage = () => {
         if (loginMutation.error instanceof Error) {
             return loginMutation.error.message;
+        }
+        if (googleSignInMutation.error instanceof Error) {
+            return googleSignInMutation.error.message;
         }
         return "An unexpected error occurred. Please try again";
     };
@@ -151,7 +196,7 @@ export default function LoginPage(){
             <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-white/5 rounded-full blur-lg"></div>
 
             {/* Error Message - Top Right Corner */}
-            {loginMutation.isError && (
+            {(loginMutation.isError || googleSignInMutation.isError) && (
                 <div className="absolute top-4 right-4 z-20 bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-lg p-3 text-sm text-red-200 max-w-xs">
                     {getErrorMessage()}
                 </div>
@@ -275,7 +320,10 @@ export default function LoginPage(){
 
                     {/* Social Login Options */}
                     <div className="space-y-3">
-                        <button className="w-full bg-white/10 backdrop-blur-sm hover:bg-white/15 border border-white/20 rounded-lg py-3 font-medium transition-all duration-200 flex items-center justify-center gap-3">
+                        <button
+                            onClick={handleGoogleSignIn}
+                            disabled={googleSignInMutation.isPending}
+                            className="w-full bg-white/10 backdrop-blur-sm hover:bg-white/15 border border-white/20 rounded-lg py-3 font-medium transition-all duration-200 flex items-center justify-center gap-3">
                             <img src="/google.png" alt="Google" className="w-5 h-5" />
                             Continue with Google
                         </button>

@@ -80,7 +80,7 @@ export default function RegisterPage() {
     const registerMutation = useMutation({
         mutationFn: registerUser,
         onSuccess: (data: RegisterResponse) => {
-            router.push("/main/login");
+            router.push("/auth/login");
         },
         onError: (error: Error) => {
             console.error("Registration Error", error.message || error);
