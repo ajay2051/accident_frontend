@@ -284,13 +284,14 @@ export default function LoginPage(){
                                 />
                                 <span className="ml-2 text-gray-200">Remember me</span>
                             </label>
-                            <button
-                                type="button"
+                            <a
+                                href="/auth/forgot_password_request"
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="text-blue-300 hover:text-blue-200 transition-colors duration-200"
-                                disabled={loginMutation.isPending}
                             >
                                 Forgot password?
-                            </button>
+                            </a>
                         </div>
 
                         {/* Submit Button */}

@@ -2,9 +2,71 @@
 
 import React, { useState } from 'react';
 import { Shield, Menu, X } from 'lucide-react';
+import axios from "axios";
+import {useMutation} from "@tanstack/react-query";
+import {useRouter} from "next/navigation";
+
+interface LogoutResponse {
+    message?: string;
+}
+
+const logOut = async () => {
+    try {
+        const token = localStorage.getItem("token");
+        const response = await axios.post(
+            `${process.env.NEXT_PUBLIC_API_URL}/auth/logout/`,
+            {},
+            {
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                }
+            }
+        );
+        return response.data;
+    } catch (error: any) {
+        if (error.response) {
+            throw new Error(
+                error.response.data?.message || "Logout failed. Please try again."
+            );
+        } else if (error.request) {
+            throw new Error("No response from server. Please try again.");
+        } else {
+            throw new Error("Network error occurred. Please try again.");
+        }
+    }
+};
+
 
 export default function Header() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+    const router = useRouter();
+
+    const logoutMutation = useMutation({
+        mutationFn: logOut,
+        onSuccess: (data: LogoutResponse) => {
+            // Clear localStorage
+            localStorage.removeItem("token");
+            localStorage.removeItem("refresh_token");
+            localStorage.removeItem("user_info");
+
+            // Redirect to login page
+            router.push("/auth/login");
+        },
+        onError: (error: Error) => {
+            console.error("Logout Error", error.message || error);
+            // Even if API call fails, clear localStorage and redirect
+            localStorage.removeItem("token");
+            localStorage.removeItem("refresh_token");
+            localStorage.removeItem("user_info");
+            router.push("/auth/login");
+        },
+    });
+
+    const handleLogout = () => {
+        logoutMutation.mutate();
+    };
 
     return (
         <div className="min-h-0 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 text-white relative">
@@ -24,8 +86,12 @@ export default function Header() {
                             <a href="#features" className="text-gray-200 hover:text-white transition-colors duration-200">Features</a>
                             <a href="#about" className="text-gray-200 hover:text-white transition-colors duration-200">About</a>
                             <a href="#contact" className="text-gray-200 hover:text-white transition-colors duration-200">Contact</a>
-                            <button className="bg-blue-500/70 hover:bg-blue-500/80 px-4 py-2 rounded-lg transition-colors duration-200">
-                                Logout
+                            <button
+                                onClick={handleLogout}
+                                disabled={logoutMutation.isPending}
+                                className="bg-blue-500/70 hover:bg-blue-500/80 px-4 py-2 rounded-lg transition-colors duration-200 disabled:opacity-50"
+                            >
+                                {logoutMutation.isPending ? "Logging out..." : "Logout"}
                             </button>
                         </div>
 
@@ -46,8 +112,12 @@ export default function Header() {
                                 <a href="#features" className="block px-3 py-2 text-gray-200 hover:text-white">Features</a>
                                 <a href="#about" className="block px-3 py-2 text-gray-200 hover:text-white">About</a>
                                 <a href="#contact" className="block px-3 py-2 text-gray-200 hover:text-white">Contact</a>
-                                <button className="w-full mt-2 bg-blue-500/70 hover:bg-blue-500/80 px-4 py-2 rounded-lg transition-colors duration-200">
-                                    Get Started
+                                <button
+                                    onClick={handleLogout}
+                                    disabled={logoutMutation.isPending}
+                                    className="w-full mt-2 bg-blue-500/70 hover:bg-blue-500/80 px-4 py-2 rounded-lg transition-colors duration-200 disabled:opacity-50"
+                                >
+                                    {logoutMutation.isPending ? "Logging out..." : "Logout"}
                                 </button>
                             </div>
                         </div>
