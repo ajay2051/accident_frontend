@@ -1,3 +1,5 @@
+# This application detect accident and notify nearest hospital and traffic police.
+
 npm install --global yarn
 
 yarn create next-app ./
