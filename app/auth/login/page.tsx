@@ -5,7 +5,6 @@ import axios from "axios"
 import { Eye, EyeOff, Lock, Mail, Loader2 } from 'lucide-react';
 import {useRouter} from "next/navigation";
 import {useMutation} from "@tanstack/react-query";
-import GoogleCallback from "@/app/auth/google_callback/page";
 
 interface LoginCredentials {
     email: string;

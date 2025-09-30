@@ -15,5 +15,3 @@ npx shadcn@latest add button
 yarn install
 
 yarn dev
-
-# TODO: Complete access token setup in localstorage by using me

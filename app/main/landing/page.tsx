@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react';
+import React, {useEffect} from 'react';
 import {
     Phone,
     MapPin,
@@ -11,9 +11,51 @@ import {
     ArrowRight
 } from 'lucide-react';
 import {useAuthGuard} from "@/hooks/authGuard";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LandingPage() {
+
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // ✅ Token parsing and saving
+    useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        const accessToken = searchParams.get("access_token");
+        const refreshToken = searchParams.get("refresh_token");
+        const tokenType = searchParams.get("token_type");
+
+        // Extract user_info from "token" parameter
+        const rawTokenParam = searchParams.get("token");
+        let userInfo = null;
+
+        if (rawTokenParam && rawTokenParam.startsWith("user_info=")) {
+            const encodedUserInfo = rawTokenParam.replace("user_info=", "");
+            try {
+                const decoded = decodeURIComponent(encodedUserInfo);
+                // Decode JSON string - replace single quotes with double quotes
+                const jsonFormatted = decoded.replace(/'/g, '"').replace('None', 'null').replace('True', 'true').replace('False', 'false');
+                userInfo = JSON.parse(jsonFormatted);
+                localStorage.setItem("user_info", JSON.stringify(userInfo));
+            } catch (error) {
+                console.error("❌ Failed to parse user_info", error);
+            }
+        }
+
+        if (accessToken && refreshToken) {
+            localStorage.setItem("token", accessToken);
+            localStorage.setItem("refresh_token", refreshToken);
+            localStorage.setItem("token_type", tokenType || "Bearer");
+
+            // Optional: navigate after saving
+            router.replace("/main/landing");
+        }
+    }, []);
+
+
     useAuthGuard();
+
+
     const features = [
         {
             icon: <AlertTriangle className="w-8 h-8" />,
