@@ -14,7 +14,11 @@ export default function Footer() {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                         <div className="col-span-1 md:col-span-2">
                             <div className="flex items-center mb-4">
-                                <Shield className="w-8 h-8 text-blue-300 mr-3" />
+                                <img
+                                    src="/acc_logo.png"
+                                    alt="Accident Logo"
+                                    className="w-8 h-8 mr-3"
+                                />
                                 <span className="text-xl font-bold">Accident Notification</span>
                             </div>
                             <p className="text-gray-300 max-w-md">
