@@ -3,8 +3,8 @@
 import React, {useEffect} from 'react';
 import {
     Phone,
-    MapPin,
     Users,
+    MapPin,
     Clock,
     AlertTriangle,
     CheckCircle,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import {useAuthGuard} from "@/hooks/authGuard";
 import { useRouter, useSearchParams } from "next/navigation";
+import 'leaflet/dist/leaflet.css';
 
 export default function LandingPage() {
 
@@ -24,6 +25,47 @@ export default function LandingPage() {
         const accessToken = searchParams.get("access_token");
         const refreshToken = searchParams.get("refresh_token");
         const tokenType = searchParams.get("token_type");
+
+        import('leaflet').then((L) => {
+            // Get coordinates from localStorage
+            const userInfo = localStorage.getItem("user_info");
+            let lat = 27.7172; // Default: Kathmandu
+            let lng = 85.3240;
+
+            if (userInfo) {
+                try {
+                    const parsed = JSON.parse(userInfo);
+                    lat = parsed.latitude || lat;
+                    lng = parsed.longitude || lng;
+                } catch (error) {
+                    console.error("Failed to parse user location", error);
+                }
+            }
+
+            // Initialize map
+            const map = L.map('map').setView([lat, lng], 13);
+
+            L.Icon.Default.mergeOptions({
+                iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+                iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+            });
+
+            // Add tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Add marker
+            L.marker([lat, lng]).addTo(map)
+                .bindPopup('Your Location')
+                .openPopup();
+
+            // Cleanup
+            return () => {
+                map.remove();
+            };
+        });
 
         // Extract user_info from "token" parameter
         const rawTokenParam = searchParams.get("token");
@@ -229,6 +271,23 @@ export default function LandingPage() {
                                 Contact Support
                             </button>
                         </div>
+                    </div>
+                </div>
+            </section>
+            {/* Map Section */}
+            <section className="relative z-10 py-20">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-8">
+                        <h2 className="text-3xl md:text-4xl font-bold mb-4 flex items-center justify-center gap-3">
+                            <MapPin className="w-8 h-8 md:w-10 md:h-10 text-blue-300" />
+                            Your Location
+                        </h2>
+                        <p className="text-xl text-gray-200 max-w-2xl mx-auto">
+                            Real-time tracking for faster emergency response
+                        </p>
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-4 overflow-hidden">
+                        <div id="map" className="w-full h-96 rounded-lg"></div>
                     </div>
                 </div>
             </section>

@@ -18,6 +18,8 @@ interface LoginResponse {
     user_id: number;
     email: string;
     user_role: string;
+    longitude: number;
+    latitude: number;
 }
 
 interface GoogleSignInResponse {
@@ -89,7 +91,9 @@ export default function LoginPage(){
             localStorage.setItem("user_info", JSON.stringify({
                 user_id: data.user_id,
                 email: data.email,
-                user_role: data.user_role
+                user_role: data.user_role,
+                longitude: data.longitude,
+                latitude: data.latitude
             }));
             router.push("/main/landing");
         },
